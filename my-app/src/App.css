@@ -1,0 +1,76 @@
+.App {
+  min-height: 100vh;
+  background-color: #f4f6f8;
+  display: flex;
+  justify-content: center;
+}
+
+.App-content {
+  width: min(700px, 92%);
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  text-align: left;
+}
+
+.inscription-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.inscription-form input,
+.inscription-form button {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccd3db;
+  font-size: 14px;
+}
+
+.inscription-form button {
+  grid-column: span 2;
+  border: none;
+  background: #2f6feb;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.inscription-form button:disabled {
+  background: #8aa6e8;
+  cursor: not-allowed;
+}
+
+.error-message {
+  margin: 6px 2px 0;
+  color: #c62828;
+  font-size: 12px;
+}
+
+.toast-success {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #e8f5e9;
+  color: #1b5e20;
+  font-weight: 600;
+}
+
+.inscrits-section {
+  margin-top: 24px;
+}
+
+.inscrits-section ul {
+  padding-left: 20px;
+}
+
+.inscrits-section li {
+  margin-bottom: 8px;
+}

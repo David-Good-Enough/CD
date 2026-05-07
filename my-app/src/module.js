@@ -1,0 +1,117 @@
+/**
+ * Calcule l'age d'une personne
+ * @param {object} p un objet avec une propriété birthday de type Date
+ * @returns {number} l'age de la personne
+ */
+
+export function calculateAge(p) {
+    if(!p) {
+        throw new Error("missing param p")
+    };
+    if(typeof p !== 'object') {
+        throw new Error("param is not an object")
+    };
+    if(!p.birth) {
+        throw new Error("object doesn t have a birth property")
+    };
+    if(!(p.birth instanceof Date)) {
+        throw new Error("property birth is not a Date")
+    };
+    if(isNaN(p.birth.getTime())) {
+        throw new Error("date invalid")
+    };
+    let dateDiff = new Date(Date.now() - p.birth.getTime())
+    let age = Math.abs(dateDiff.getFullYear() - 1970);
+    return age
+}
+
+/** 
+ * Vérifie si un email est valide
+ * 
+ * @param {string} email l'email à vérifier
+ * @returns {boolean} true si l'email est valide, false sinon
+*/
+
+
+export function isValidEmail(email) {
+    if(!email) {
+        throw new Error("missing param email")
+    };
+    if(typeof email !== 'string') {
+        throw new Error("param is not a string")
+    };
+    const normalizedEmail = email.trim();
+
+    if(normalizedEmail.length < 3) {
+        return false
+    };
+    if(!normalizedEmail.includes('@')) {
+        return false
+    };
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(!emailRegex.test(normalizedEmail)) {
+        return false
+    };
+    return true
+}
+
+/**
+ * Vérifie si un code postal est valide
+ * @param {string} codePostal le code postal à vérifier (5 chiffres)
+ * @returns {boolean} true si le code postal est valide, false sinon
+ */
+export function isValidCodePostal(codePostal) {
+    if(!codePostal) {
+        throw new Error("missing param codePostal")
+    };
+    if(typeof codePostal !== 'string') {
+        throw new Error("param is not a string")
+    };
+    const normalizedCodePostal = codePostal.trim();
+
+    if(normalizedCodePostal.length !== 5) {
+        return false
+    };
+
+    const codePostalRegex = /^\d{5}$/;
+    if(!codePostalRegex.test(normalizedCodePostal)) {
+        return false
+    };
+    return true
+}
+
+
+/**
+ * Vérifie si nom, prénom et ville sont valides
+ * 
+ * @param {object} name un objet avec une propriété nom, prenom et ville
+ * @returns {boolean} true si les trois champs sont valides, false sinon 
+ */
+export function isValidName(name) {
+    if(name === undefined || name === null) {
+        throw new Error("missing param name")
+    };
+    if(typeof name !== 'object') {
+        throw new Error("param is not an object")
+    };
+    if(name.nom === undefined || name.prenom === undefined || name.ville === undefined) {
+        throw new Error("object must include nom, prenom and ville")
+    };
+    if(typeof name.nom !== 'string' || typeof name.prenom !== 'string' || typeof name.ville !== 'string') {
+        throw new Error("nom, prenom and ville must be strings")
+    };
+
+    const nom = name.nom.trim();
+    const prenom = name.prenom.trim();
+    const ville = name.ville.trim();
+    const nameRegex = /^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$/;
+
+    if(nom.length < 2 || prenom.length < 2 || ville.length < 2) {
+        return false
+    };
+    if(!nameRegex.test(nom) || !nameRegex.test(prenom) || !nameRegex.test(ville)) {
+        return false
+    };
+    return true
+}
