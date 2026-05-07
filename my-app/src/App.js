@@ -1,5 +1,5 @@
 import './App.css';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   calculateAge,
   isValidCodePostal,
@@ -86,17 +86,14 @@ function App() {
     return '';
   };
 
-  const errors = useMemo(
-    () => ({
-      nom: validateField('nom', formData.nom),
-      prenom: validateField('prenom', formData.prenom),
-      email: validateField('email', formData.email),
-      dateNaissance: validateField('dateNaissance', formData.dateNaissance),
-      ville: validateField('ville', formData.ville),
-      codePostal: validateField('codePostal', formData.codePostal),
-    }),
-    [formData]
-  );
+  const errors = {
+    nom: validateField('nom', formData.nom),
+    prenom: validateField('prenom', formData.prenom),
+    email: validateField('email', formData.email),
+    dateNaissance: validateField('dateNaissance', formData.dateNaissance),
+    ville: validateField('ville', formData.ville),
+    codePostal: validateField('codePostal', formData.codePostal),
+  };
 
   const isFormValid = Object.values(errors).every((error) => error === '');
 
