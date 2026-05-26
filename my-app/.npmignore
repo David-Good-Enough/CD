@@ -1,0 +1,14 @@
+# deps / caches
+node_modules
+coverage
+build
+# sources et fichiers de dev (on publie dist)
+src
+public
+*.log
+.env*
+.vscode
+.idea
+.github
+# outils/tests
+jsdoc.config.json
