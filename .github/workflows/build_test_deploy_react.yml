@@ -36,17 +36,17 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: build and publish package on NPM
-          run: |
-            git config --global user.email "loise.fenoll@ynov.com"
-              git config --global user.name "Loise Fenoll"
-              npm run build-npm
-              npm version patch
-              npm publish
-              git add .
-              git commit -m “updated version”
-              git push
-          env:
-            NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          git config --global user.email "thomas.barrault@ynov.com"
+          git config --global user.name "Thomas Barrault"
+          npm run build-npm
+          npm version patch
+          npm publish
+          git add .
+          git commit -m “updated version”
+          git push
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v3
