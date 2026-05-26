@@ -42,12 +42,14 @@ jobs:
           git config --global user.email "thomas.barrault@ynov.com"
           git config --global user.name "Thomas Barrault"
           cd my-app
-          npm run build-npm-ci
-          npm version patch
-          npm publish
-          git add .
-          git commit -m "updated version"
-          git push
+          LOCAL_VERSION=$(node -p "require('./package.json').version")
+          NPM_VERSION=$(npm view my-app-barrault version)
+          echo "Local version: $LOCAL_VERSION"
+          echo "NPM version: $NPM_VERSION"
+          if [ "$LOCAL_VERSION" != "$NPM_VERSION" ]; then
+            npm publish
+            exit 1
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Setup Pages
