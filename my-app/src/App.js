@@ -1,11 +1,13 @@
 import './App.css';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   calculateAge,
   isValidCodePostal,
   isValidEmail,
   isValidName,
 } from './module';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 function App() {
   const initialFormData = {
@@ -32,6 +34,16 @@ function App() {
   const [inscrits, setInscrits] = useState([]);
   const [touched, setTouched] = useState({ ...initialTouched });
   const [successToast, setSuccessToast] = useState(false);
+  const [apiError, setApiError] = useState('');
+
+  const fetchUsers = useCallback(async () => {
+    const response = await fetch(`${API_BASE_URL}/users`);
+    if (!response.ok) {
+      throw new Error('Erreur lors du chargement des utilisateurs.');
+    }
+    const payload = await response.json();
+    setInscrits(payload.utilisateurs || []);
+  }, []);
 
   const validateField = (name, value) => {
     const trimmedValue = value.trim();
@@ -98,6 +110,18 @@ function App() {
   const isFormValid = Object.values(errors).every((error) => error === '');
 
   useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        await fetchUsers();
+      } catch (error) {
+        setApiError("Impossible de charger les inscrits depuis l'API.");
+      }
+    };
+
+    loadUsers();
+  }, [fetchUsers]);
+
+  useEffect(() => {
     if (!successToast) {
       return undefined;
     }
@@ -125,8 +149,9 @@ function App() {
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setApiError('');
     setTouched({
       nom: true,
       prenom: true,
@@ -140,17 +165,26 @@ function App() {
       return;
     }
 
-    setInscrits((previous) => [
-      ...previous,
-      {
-        id: Date.now(),
-        ...formData,
-      },
-    ]);
+    try {
+      const response = await fetch(`${API_BASE_URL}/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
 
-    setSuccessToast(true);
-    setFormData({ ...initialFormData });
-    setTouched({ ...initialTouched });
+      if (!response.ok) {
+        throw new Error("Erreur lors de l'enregistrement.");
+      }
+
+      await fetchUsers();
+      setSuccessToast(true);
+      setFormData({ ...initialFormData });
+      setTouched({ ...initialTouched });
+    } catch (error) {
+      setApiError("L'enregistrement a echoue. Verifie que l'API est disponible.");
+    }
   };
 
   return (
@@ -161,6 +195,11 @@ function App() {
           <div className="toast-success" role="status" aria-live="polite">
             Inscription enregistree avec succes.
           </div>
+        ) : null}
+        {apiError ? (
+          <p className="error-message" role="alert">
+            {apiError}
+          </p>
         ) : null}
 
         <form className="inscription-form" onSubmit={handleSubmit}>
