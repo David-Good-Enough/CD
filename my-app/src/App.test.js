@@ -1,6 +1,44 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 import * as moduleUtils from './module';
+
+const buildResponse = (payload, ok = true) =>
+  Promise.resolve({
+    ok,
+    json: async () => payload,
+  });
+
+const fillValidForm = () => {
+  fireEvent.change(screen.getByLabelText('Nom'), {
+    target: { value: 'Barrault' },
+  });
+  fireEvent.change(screen.getByLabelText('Prénom'), {
+    target: { value: 'Thomas' },
+  });
+  fireEvent.change(screen.getByLabelText('Email'), {
+    target: { value: 'Thomas.Barrault@mail.com' },
+  });
+  fireEvent.change(screen.getByLabelText('Date de naissance'), {
+    target: { value: '2000-07-14' },
+  });
+  fireEvent.change(screen.getByLabelText('Ville'), {
+    target: { value: 'Nice' },
+  });
+  fireEvent.change(screen.getByLabelText('Code postal'), {
+    target: { value: '06640' },
+  });
+};
+
+beforeEach(() => {
+  // Keep default API call pending to avoid async setState warnings
+  // in tests that don't assert the initial load behavior.
+  global.fetch = jest.fn(() => new Promise(() => {}));
+});
+
+afterEach(() => {
+  jest.clearAllMocks();
+  jest.useRealTimers();
+});
 
 
 test('desactive le bouton tant que le formulaire est invalide', () => {
@@ -137,43 +175,94 @@ test('bloque les utilisateurs de moins de 18 ans', () => {
   expect(screen.getByRole('button', { name: 'Sauvegarder' })).toBeDisabled();
 });
 
-test('affiche le toaster de succes, vide le formulaire et ajoute l inscrit', () => {
-  jest.useFakeTimers();
+test("affiche une erreur si le chargement initial via l'API echoue", async () => {
+  global.fetch = jest.fn(() => buildResponse({}, false));
   render(<App />);
 
-  fireEvent.change(screen.getByLabelText('Nom'), {
-    target: { value: 'Barrault' },
-  });
-  fireEvent.change(screen.getByLabelText('Prénom'), {
-    target: { value: 'Thomas' },
-  });
-  fireEvent.change(screen.getByLabelText('Email'), {
-    target: { value: 'Thomas.Barrault@mail.com' },
-  });
-  fireEvent.change(screen.getByLabelText('Date de naissance'), {
-    target: { value: '2000-07-14' },
-  });
-  fireEvent.change(screen.getByLabelText('Ville'), {
-    target: { value: 'Nice' },
-  });
-  fireEvent.change(screen.getByLabelText('Code postal'), {
-    target: { value: '06640' },
-  });
+  expect(
+    await screen.findByText("Impossible de charger les inscrits depuis l'API.")
+  ).toBeInTheDocument();
+});
+
+test("affiche une erreur si l'enregistrement via l'API echoue", async () => {
+  global.fetch
+    .mockImplementationOnce(() => buildResponse({ utilisateurs: [] }))
+    .mockImplementationOnce(() => buildResponse({}, false));
+
+  render(<App />);
+  fillValidForm();
+  fireEvent.click(screen.getByRole('button', { name: 'Sauvegarder' }));
+
+  expect(
+    await screen.findByText("L'enregistrement a echoue. Verifie que l'API est disponible.")
+  ).toBeInTheDocument();
+});
+
+test('affiche la liste des inscrits chargee depuis l API', async () => {
+  global.fetch = jest.fn(() =>
+    buildResponse({
+      utilisateurs: [
+        {
+          id: 42,
+          nom: 'Durand',
+          prenom: 'Alice',
+          email: 'alice.durand@mail.com',
+          dateNaissance: '1998-09-10',
+          ville: 'Paris',
+          codePostal: '75001',
+        },
+      ],
+    })
+  );
+
+  render(<App />);
+
+  expect(
+    await screen.findByText(
+      /Alice Durand - alice\.durand@mail\.com - ne\(e\) le 1998-09-10 - Paris \(75001\)/
+    )
+  ).toBeInTheDocument();
+});
+
+test('affiche le toaster de succes, vide le formulaire et ajoute l inscrit', async () => {
+  jest.useFakeTimers();
+  global.fetch
+    .mockImplementationOnce(() => buildResponse({ utilisateurs: [] }))
+    .mockImplementationOnce(() => buildResponse({ id: 1 }))
+    .mockImplementationOnce(() =>
+      buildResponse({
+        utilisateurs: [
+          {
+            id: 1,
+            nom: 'Barrault',
+            prenom: 'Thomas',
+            email: 'Thomas.Barrault@mail.com',
+            dateNaissance: '2000-07-14',
+            ville: 'Nice',
+            codePostal: '06640',
+          },
+        ],
+      })
+    );
+  render(<App />);
+  fillValidForm();
 
   fireEvent.click(screen.getByRole('button', { name: 'Sauvegarder' }));
 
   expect(
-    screen.getByText('Inscription enregistree avec succes.')
+    await screen.findByText('Inscription enregistree avec succes.')
   ).toBeInTheDocument();
-  expect(screen.getByLabelText('Nom')).toHaveValue('');
-  expect(screen.getByLabelText('Prénom')).toHaveValue('');
-  expect(screen.getByLabelText('Email')).toHaveValue('');
-  expect(screen.getByLabelText('Date de naissance')).toHaveValue('');
-  expect(screen.getByLabelText('Ville')).toHaveValue('');
-  expect(screen.getByLabelText('Code postal')).toHaveValue('');
+  await waitFor(() => {
+    expect(screen.getByLabelText('Nom')).toHaveValue('');
+    expect(screen.getByLabelText('Prénom')).toHaveValue('');
+    expect(screen.getByLabelText('Email')).toHaveValue('');
+    expect(screen.getByLabelText('Date de naissance')).toHaveValue('');
+    expect(screen.getByLabelText('Ville')).toHaveValue('');
+    expect(screen.getByLabelText('Code postal')).toHaveValue('');
+  });
 
   expect(
-    screen.getByText(
+    await screen.findByText(
       /Thomas Barrault - Thomas\.Barrault@mail\.com - ne\(e\) le 2000-07-14 - Nice \(06640\)/
     )
   ).toBeInTheDocument();
@@ -185,5 +274,4 @@ test('affiche le toaster de succes, vide le formulaire et ajoute l inscrit', () 
   expect(
     screen.queryByText('Inscription enregistree avec succes.')
   ).not.toBeInTheDocument();
-  jest.useRealTimers();
 });
