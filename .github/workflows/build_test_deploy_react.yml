@@ -240,12 +240,9 @@ jobs:
       - name: Pull Vercel Environment Information
         working-directory: my-app
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-      - name: Build Project Artifacts
+      - name: Deploy to Vercel (remote build)
         working-directory: my-app
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-      - name: Deploy Project Artifacts to Vercel
-        working-directory: my-app
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
   build-docker:
     runs-on: ubuntu-latest
     needs: [build_test, test-docker, cypress-online, cypress-offline, cypress-e2e-full]
