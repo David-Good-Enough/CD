@@ -75,7 +75,7 @@ jobs:
           EOF
       - name: Start docker compose
         working-directory: my-app
-        run: docker compose up -d --build
+        run: docker compose up -d --build db adminer server
       - name: Show containers
         working-directory: my-app
         run: docker compose ps
@@ -184,7 +184,7 @@ jobs:
       - name: Wait for services to be healthy
         working-directory: my-app
         run: |
-          services=("db" "adminer" "server" "react")
+          services=("db" "adminer" "server")
           for service in "${services[@]}"; do
             cid=$(docker compose ps -q "$service")
             if [ -z "$cid" ]; then
@@ -216,6 +216,9 @@ jobs:
         with:
           working-directory: my-app
           install: false
+          start: npm start
+          wait-on: 'http://localhost:3000'
+          wait-on-timeout: 120
           command: npx cypress run --spec cypress/e2e/01-user-registration.cy.js,cypress/e2e/02-admin-login.cy.js,cypress/e2e/03-admin-delete-user.cy.js
       - name: Tear down
         if: always()
