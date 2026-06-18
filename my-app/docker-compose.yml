@@ -32,6 +32,7 @@ services:
     restart: always
     volumes:
       - ./server.py:/app/server.py
+      - ./api_backend:/app/api_backend
     build:
       context: .
       dockerfile: ./DockerfilePython

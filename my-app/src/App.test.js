@@ -29,6 +29,9 @@ const fillValidForm = () => {
   });
 };
 
+const getRegistrationForm = (container) =>
+  container.querySelectorAll('form.inscription-form')[1];
+
 beforeEach(() => {
   // Keep default API call pending to avoid async setState warnings
   // in tests that don't assert the initial load behavior.
@@ -137,7 +140,7 @@ test('affiche une erreur si date de naissance invalide', () => {
 test('ne sauvegarde pas quand le formulaire est invalide meme en submit direct', () => {
   const { container } = render(<App />);
 
-  const form = container.querySelector('form');
+  const form = getRegistrationForm(container);
   fireEvent.submit(form);
 
   expect(
@@ -195,6 +198,139 @@ test("affiche une erreur si l'enregistrement via l'API echoue", async () => {
 
   expect(
     await screen.findByText("L'enregistrement a echoue. Verifie que l'API est disponible.")
+  ).toBeInTheDocument();
+});
+
+test("affiche une erreur si la connexion admin echoue", async () => {
+  global.fetch
+    .mockImplementationOnce(() => buildResponse({ utilisateurs: [] }))
+    .mockImplementationOnce(() => buildResponse({}, false));
+
+  render(<App />);
+
+  fireEvent.change(screen.getByLabelText('Admin username'), {
+    target: { value: 'admin' },
+  });
+  fireEvent.change(screen.getByLabelText('Admin password'), {
+    target: { value: 'wrong' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connexion admin' }));
+
+  expect(await screen.findByText('Connexion admin invalide.')).toBeInTheDocument();
+});
+
+test('connexion admin reussie puis deconnexion', async () => {
+  global.fetch
+    .mockImplementationOnce(() => buildResponse({ utilisateurs: [] }))
+    .mockImplementationOnce(() => buildResponse({ token: 'admin-token' }));
+
+  render(<App />);
+
+  fireEvent.change(screen.getByLabelText('Admin username'), {
+    target: { value: 'admin' },
+  });
+  fireEvent.change(screen.getByLabelText('Admin password'), {
+    target: { value: 'admin123' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connexion admin' }));
+
+  expect(
+    await screen.findByText('Connecte en admin. Tu peux supprimer des utilisateurs.')
+  ).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Se deconnecter' })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Se deconnecter' }));
+  expect(screen.getByRole('button', { name: 'Connexion admin' })).toBeInTheDocument();
+});
+
+test('supprime un utilisateur quand admin est connecte', async () => {
+  global.fetch
+    .mockImplementationOnce(() =>
+      buildResponse({
+        utilisateurs: [
+          {
+            id: 9,
+            nom: 'Durand',
+            prenom: 'Alice',
+            email: 'alice@mail.com',
+            dateNaissance: '1998-09-10',
+            ville: 'Paris',
+            codePostal: '75001',
+          },
+        ],
+      })
+    )
+    .mockImplementationOnce(() => buildResponse({ token: 'admin-token' }))
+    .mockImplementationOnce(() => buildResponse({ deleted: true }))
+    .mockImplementationOnce(() => buildResponse({ utilisateurs: [] }));
+
+  render(<App />);
+  expect(
+    await screen.findByText(
+      /Alice Durand - alice@mail\.com - ne\(e\) le 1998-09-10 - Paris \(75001\)/
+    )
+  ).toBeInTheDocument();
+
+  fireEvent.change(screen.getByLabelText('Admin username'), {
+    target: { value: 'admin' },
+  });
+  fireEvent.change(screen.getByLabelText('Admin password'), {
+    target: { value: 'admin123' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connexion admin' }));
+  await screen.findByText('Connecte en admin. Tu peux supprimer des utilisateurs.');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }));
+
+  await waitFor(() => {
+    expect(
+      screen.queryByText(
+        /Alice Durand - alice@mail\.com - ne\(e\) le 1998-09-10 - Paris \(75001\)/
+      )
+    ).not.toBeInTheDocument();
+  });
+});
+
+test("affiche une erreur si la suppression echoue", async () => {
+  global.fetch
+    .mockImplementationOnce(() =>
+      buildResponse({
+        utilisateurs: [
+          {
+            id: 10,
+            nom: 'Durand',
+            prenom: 'Alice',
+            email: 'alice@mail.com',
+            dateNaissance: '1998-09-10',
+            ville: 'Paris',
+            codePostal: '75001',
+          },
+        ],
+      })
+    )
+    .mockImplementationOnce(() => buildResponse({ token: 'admin-token' }))
+    .mockImplementationOnce(() => buildResponse({}, false));
+
+  render(<App />);
+  await screen.findByText(
+    /Alice Durand - alice@mail\.com - ne\(e\) le 1998-09-10 - Paris \(75001\)/
+  );
+
+  fireEvent.change(screen.getByLabelText('Admin username'), {
+    target: { value: 'admin' },
+  });
+  fireEvent.change(screen.getByLabelText('Admin password'), {
+    target: { value: 'admin123' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Connexion admin' }));
+  await screen.findByText('Connecte en admin. Tu peux supprimer des utilisateurs.');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }));
+
+  expect(
+    await screen.findByText(
+      "Suppression impossible. Verifie la connexion admin et la disponibilite de l'API."
+    )
   ).toBeInTheDocument();
 });
 

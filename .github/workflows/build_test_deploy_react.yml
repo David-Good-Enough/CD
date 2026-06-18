@@ -114,9 +114,96 @@ jobs:
         if: always()
         working-directory: my-app
         run: docker compose down -v
+  cypress-online:
+    runs-on: ubuntu-latest
+    needs: build_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Cypress tests (Online mode)
+        uses: cypress-io/github-action@v7
+        with:
+          working-directory: my-app
+          start: npm start
+          wait-on: 'http://localhost:3000'
+          wait-on-timeout: 120
+          command: npx cypress run --spec cypress/e2e/04-sync-offline.cy.js
+        env:
+          CYPRESS_offline: false
+  cypress-offline:
+    runs-on: ubuntu-latest
+    needs: build_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Cypress tests (Offline mode)
+        uses: cypress-io/github-action@v7
+        with:
+          working-directory: my-app
+          start: npm start
+          wait-on: 'http://localhost:3000'
+          wait-on-timeout: 120
+          command: npx cypress run --spec cypress/e2e/04-sync-offline.cy.js
+        env:
+          CYPRESS_offline: true
+  cypress-e2e-full:
+    runs-on: ubuntu-latest
+    needs: build_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create .env for docker compose
+        working-directory: my-app
+        run: |
+          cat <<EOF > .env
+          MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
+          MYSQL_USER=${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_HOST=db
+          EOF
+      - name: Start docker compose
+        working-directory: my-app
+        run: docker compose up -d --build
+      - name: Wait for services to be healthy
+        working-directory: my-app
+        run: |
+          services=("db" "adminer" "server" "react")
+          for service in "${services[@]}"; do
+            cid=$(docker compose ps -q "$service")
+            if [ -z "$cid" ]; then
+              echo "Container for $service not found"
+              exit 1
+            fi
+            for i in {1..30}; do
+              status=$(docker inspect --format '{{json .State.Health.Status}}' "$cid" 2>/dev/null || echo "\"no-healthcheck\"")
+              echo "$service status: $status"
+              if [ "$status" = "\"healthy\"" ]; then
+                break
+              fi
+              if [ "$status" = "\"unhealthy\"" ] || [ "$status" = "\"no-healthcheck\"" ]; then
+                echo "$service is not healthy"
+                docker compose logs "$service" || true
+                exit 1
+              fi
+              sleep 5
+            done
+            final=$(docker inspect --format '{{json .State.Health.Status}}' "$cid")
+            if [ "$final" != "\"healthy\"" ]; then
+              echo "$service did not become healthy in time"
+              docker compose logs "$service" || true
+              exit 1
+            fi
+          done
+      - name: Run Cypress full E2E specs
+        uses: cypress-io/github-action@v7
+        with:
+          working-directory: my-app
+          command: npx cypress run --spec cypress/e2e/01-user-registration.cy.js,cypress/e2e/02-admin-login.cy.js,cypress/e2e/03-admin-delete-user.cy.js
+      - name: Tear down
+        if: always()
+        working-directory: my-app
+        run: docker compose down -v
   build-docker:
     runs-on: ubuntu-latest
-    needs: [build_test, test-docker]
+    needs: [build_test, test-docker, cypress-online, cypress-offline, cypress-e2e-full]
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4

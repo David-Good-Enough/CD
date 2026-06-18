@@ -1,13 +1,17 @@
 import './App.css';
 import { useCallback, useEffect, useState } from 'react';
 import {
+  adminLogin,
+  createUser,
+  deleteUserById,
+  getUsers,
+} from './apiClient';
+import {
   calculateAge,
   isValidCodePostal,
   isValidEmail,
   isValidName,
 } from './module';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 function App() {
   const initialFormData = {
@@ -27,6 +31,10 @@ function App() {
     ville: false,
     codePostal: false,
   };
+  const initialAdminForm = {
+    username: '',
+    password: '',
+  };
 
   const [formData, setFormData] = useState({
     ...initialFormData,
@@ -35,14 +43,13 @@ function App() {
   const [touched, setTouched] = useState({ ...initialTouched });
   const [successToast, setSuccessToast] = useState(false);
   const [apiError, setApiError] = useState('');
+  const [adminForm, setAdminForm] = useState({ ...initialAdminForm });
+  const [adminToken, setAdminToken] = useState('');
+  const [adminError, setAdminError] = useState('');
 
   const fetchUsers = useCallback(async () => {
-    const response = await fetch(`${API_BASE_URL}/users`);
-    if (!response.ok) {
-      throw new Error('Erreur lors du chargement des utilisateurs.');
-    }
-    const payload = await response.json();
-    setInscrits(payload.utilisateurs || []);
+    const users = await getUsers();
+    setInscrits(users);
   }, []);
 
   const validateField = (name, value) => {
@@ -149,6 +156,39 @@ function App() {
     }));
   };
 
+  const handleAdminChange = (event) => {
+    const { name, value } = event.target;
+    setAdminForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  const handleAdminLogin = async (event) => {
+    event.preventDefault();
+    setAdminError('');
+
+    try {
+      const payload = await adminLogin(adminForm);
+      setAdminToken(payload.token);
+      setAdminForm({ ...initialAdminForm });
+    } catch (error) {
+      setAdminError('Connexion admin invalide.');
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    setApiError('');
+    try {
+      await deleteUserById(userId, adminToken);
+      await fetchUsers();
+    } catch (error) {
+      setApiError(
+        "Suppression impossible. Verifie la connexion admin et la disponibilite de l'API."
+      );
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setApiError('');
@@ -166,18 +206,7 @@ function App() {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de l'enregistrement.");
-      }
-
+      await createUser(formData);
       await fetchUsers();
       setSuccessToast(true);
       setFormData({ ...initialFormData });
@@ -191,6 +220,42 @@ function App() {
     <div className="App">
       <main className="App-content">
         <h1>Inscription utilisateur</h1>
+        <section className="inscrits-section">
+          <h2>Admin</h2>
+          {adminToken ? (
+            <>
+              <p>Connecte en admin. Tu peux supprimer des utilisateurs.</p>
+              <button type="button" onClick={() => setAdminToken('')}>
+                Se deconnecter
+              </button>
+            </>
+          ) : (
+            <form className="inscription-form" onSubmit={handleAdminLogin}>
+              <div className="field-group">
+                <input
+                  type="text"
+                  name="username"
+                  aria-label="Admin username"
+                  placeholder="Admin username"
+                  value={adminForm.username}
+                  onChange={handleAdminChange}
+                />
+              </div>
+              <div className="field-group">
+                <input
+                  type="password"
+                  name="password"
+                  aria-label="Admin password"
+                  placeholder="Admin password"
+                  value={adminForm.password}
+                  onChange={handleAdminChange}
+                />
+              </div>
+              <button type="submit">Connexion admin</button>
+            </form>
+          )}
+          {adminError ? <p className="error-message">{adminError}</p> : null}
+        </section>
         {successToast ? (
           <div className="toast-success" role="status" aria-live="polite">
             Inscription enregistree avec succes.
@@ -286,7 +351,7 @@ function App() {
               <p className="error-message">{errors.codePostal}</p>
             ) : null}
           </div>
-          <button type="submit" disabled={!isFormValid}>
+          <button type="submit" data-cy="btn-sync" disabled={!isFormValid}>
             Sauvegarder
           </button>
         </form>
@@ -301,6 +366,17 @@ function App() {
                 <li key={inscrit.id}>
                   {inscrit.prenom} {inscrit.nom} - {inscrit.email} - ne(e) le{' '}
                   {inscrit.dateNaissance} - {inscrit.ville} ({inscrit.codePostal})
+                  {adminToken ? (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteUser(inscrit.id)}
+                      >
+                        Supprimer
+                      </button>
+                    </>
+                  ) : null}
                 </li>
               ))}
             </ul>
