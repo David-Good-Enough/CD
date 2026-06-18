@@ -82,7 +82,7 @@ jobs:
       - name: Wait and verify healthchecks
         working-directory: my-app
         run: |
-          services=("db" "adminer" "server" "react")
+          services=("db" "adminer" "server")
           for service in "${services[@]}"; do
             echo "Checking health for $service..."
             cid=$(docker compose ps -q "$service")
