@@ -119,10 +119,16 @@ jobs:
     needs: build_test
     steps:
       - uses: actions/checkout@v4
+      - name: Install dependencies
+        working-directory: my-app
+        run: |
+          rm -rf node_modules
+          npm ci
       - name: Run Cypress tests (Online mode)
         uses: cypress-io/github-action@v7
         with:
           working-directory: my-app
+          install: false
           start: npm start
           wait-on: 'http://localhost:3000'
           wait-on-timeout: 120
@@ -134,10 +140,16 @@ jobs:
     needs: build_test
     steps:
       - uses: actions/checkout@v4
+      - name: Install dependencies
+        working-directory: my-app
+        run: |
+          rm -rf node_modules
+          npm ci
       - name: Run Cypress tests (Offline mode)
         uses: cypress-io/github-action@v7
         with:
           working-directory: my-app
+          install: false
           start: npm start
           wait-on: 'http://localhost:3000'
           wait-on-timeout: 120
@@ -162,6 +174,13 @@ jobs:
       - name: Start docker compose
         working-directory: my-app
         run: docker compose up -d --build
+      - name: Fix workspace permissions after docker
+        run: sudo chown -R "$USER":"$USER" my-app
+      - name: Install dependencies
+        working-directory: my-app
+        run: |
+          rm -rf node_modules
+          npm ci
       - name: Wait for services to be healthy
         working-directory: my-app
         run: |
@@ -196,6 +215,7 @@ jobs:
         uses: cypress-io/github-action@v7
         with:
           working-directory: my-app
+          install: false
           command: npx cypress run --spec cypress/e2e/01-user-registration.cy.js,cypress/e2e/02-admin-login.cy.js,cypress/e2e/03-admin-delete-user.cy.js
       - name: Tear down
         if: always()
